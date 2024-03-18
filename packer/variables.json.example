@@ -1,6 +1,6 @@
 {
     "folder_id": "d5a79dc74ccd1d3160c9912f303aef82",
-    "service_account_key_file": "../../key.json",
+    "service_account_key_file": "key.json.mok",
     "source_image_id": "26637e2cf3ca5c5fe3b7",
     "skip_create_image": "false"
 }
