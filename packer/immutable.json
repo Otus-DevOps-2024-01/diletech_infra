@@ -10,8 +10,7 @@
             "image_family": "reddit-full",
             "ssh_username": "ubuntu",
             "platform_id": "standard-v1",
-            "use_ipv4_nat": "true",
-            "skip_create_image": "{{ user `skip_create_image` }}"
+            "use_ipv4_nat": "true"
         }
     ],
     "provisioners": [
