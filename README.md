@@ -46,3 +46,42 @@ yc compute instance add-one-to-one-nat \
   --nat-address=51.250.85.60 \
   --network-interface-index=0
 ```
+___
+### Packer
+- передача параметров в packer
+`packer build -var 'source_image_id=fd85t6ulvuvp8q3trhbe' -var 'skip_create_image=true'  --var-file=variables.json .\ubuntu16.json`
+- собственные команды автоматизации `yc` для fish
+`source my-yc-command.fish`
+- `vm-make-config.sh` готовит vm-config.txt из vm-init.tpl, используется в `yc compute instance create` для передачи параметров как `--metadata-from-file user-data=$YC_VM_CONFIG`
+
+
+###### запуск для packer
+1. инициализируем команды для автоматизации в fish-shell `source my-yc-command.fish`
+    - `yc_print_variables` вывод переменных
+    - `yc_list_all` запрос и вывод имеющихся ресурсов
+    - `yc_vpc_network_create` создание сети
+    - `yc_vpc_subnet_create` создание подсети
+    - `yc_vpc_address_create` создание ip-адреса
+    - `yc_vpc_prepare` подготовка сети: создание vpc subnet ext-ip
+    - `yc_cumpute_instance_create` создание инстанса (получение имиджа и ext-ip по условию внутри функции)
+    - `yc_all_delete` функция удаление всего
+    - `yc_all_delete_confirm` интерактивный вызов функции удаления всего
+
+2. из папки packer (используя пустой source_image_id в variables.json и передавая его в ключе -var):
+    - получаем имидж с установкой окружения
+      `packer build --var-file=variables.json .\ubuntu16.json`
+    - из полученного имиджа по его id делаем деплой в новый имидж
+      `packer build -var "source_image_id=$source_image_id" --var-file=variables.json .\immutable.json`
+    - для прогона без создания имиджа `skip_create_image`
+
+3. готовим сеть через свою автоматизацию:
+    `yc_vpc_prepare`
+
+4. создаем интсанс из готового имиджа запуском скрипта:
+    `./config-scripts/create-reddit-vm.sh`
+
+5. проверяем: получаем IP и открываем в браузере
+    `set -U IP (yc compute instance list --format json | jq -r '.[].network_interfaces[].primary_v4_address.one_to_one_nat.address');and open http://$IP:9292; or echo Ooopss..`
+
+6. всё удаляем
+    `yc_all_delete_confirm`
