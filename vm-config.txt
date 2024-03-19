@@ -1,0 +1,12 @@
+#cloud-config
+
+datasource:
+  Ec2:
+    strict_id: false
+ssh_pwauth: yes
+users:
+  - name: "yc-user"
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh-authorized-keys:
+      - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD1Wek1b8+IJCnZIsIWeMYXCebdBV6VXVf9i9kuEUIaHVmkvbIXptci524OZ/d6t2nbjc6uf+TrINNCVj2aJSzfuMsyxUom2c74a8f2/C/9L6BkGfre0UR7Z29K0WRPaLe8Go+zNvH+1+ZbJxWzZ79YMR8X+WqSNSUAlf2IFEv9w9+Y6+mDG+Dr8CG7dEB3zMkq5YEIYW6gQ8Yw2L4OglftuXg5ZF7M1gn7EPd6hfLwMlo/bYAj2KbflJutIYynfdFxgKSenkDzXk6jPe4U6Rgw28X76It9OBLJh88/I0ntbh2LFhEwNv5XsEaH1XZQJIceTi+Ml8VqA5U3X4xKMcePTU74o1MXigccev/T+Reslu1Z8pWhan3f/Ep5SSC8nZGIPIGQBlH9MvsUUf+lncFK3NvGOISK5KZBkCnyTaA5IuCbYDsazkz09Mln0YjhQ6040mNfey1MrgedFwMP2Ra30G19YWbvgji3YjpqXZgsdoZr+F8rsWDF5kNncI82T6c= appuser"

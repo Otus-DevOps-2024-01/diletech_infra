@@ -1,0 +1,41 @@
+{
+    "builders": [
+        {
+            "type": "yandex",
+            "folder_id": "{{ user `folder_id` }}",
+            "service_account_key_file": "{{ user `service_account_key_file` }}",
+            "source_image_id": "{{ user `source_image_id` }}",
+            "source_image_family": "ubuntu-1604-lts",
+            "image_name": "reddit-full-{{timestamp}}",
+            "image_family": "reddit-full",
+            "ssh_username": "ubuntu",
+            "platform_id": "standard-v1",
+            "use_ipv4_nat": "true"
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "shell",
+            "script": "scripts/deploy.sh",
+            "execute_command": "sudo {{.Path}}"
+        },
+        {
+            "type": "shell",
+            "inline": [
+                "echo TESTING: running Puma and check connection",
+                "sudo systemctl start puma",
+                "sleep 5",
+                "CHECK_PORT=9292",
+                "HTTP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$CHECK_PORT)",
+                "echo check Puma status on port $CHECK_PORT: HTTP_STATUS=$HTTP_STATUS",
+                "if [ $HTTP_STATUS -eq 200 ]; then",
+                "  echo \"Puma is running and accessible on port $CHECK_PORT\"",
+                "  exit 0",
+                "else",
+                "  echo \"Puma is not running or not accessible on port $CHECK_PORT\"",
+                "  exit 1",
+                "fi"
+            ]
+        }
+    ]
+}

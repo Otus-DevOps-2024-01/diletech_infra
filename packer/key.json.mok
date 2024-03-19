@@ -1,0 +1,8 @@
+{
+   "id": "aaaaaaaabbbbbbbcccccc",
+   "service_account_id": "111111122222222333333",
+   "created_at": "2024-03-13T19:34:58.293626507Z",
+   "key_algorithm": "RSA_2048",
+   "public_key": "-----BEGIN PUBLIC KEY-----\nMIIgs11emV4hDtNHBxkXjO1a1A796tASUqq945CRy7HP37MTwOYSIvOwo8hTqxlc4wuhhWpnvOsw4apEEcCVwGoUiOfajCb12RD5PDLG/11bOeLO+thb4cWGLy53ELIq07jOAitO\nh11AgW0TKJoHFyQPvC3dDO6CNYe4rBmZOE4r7ehcSDA9dLzlz9nT+Lx67fmdqGlzS\nCwIDAQAB\n-----END PUBLIC KEY-----\n",
+   "private_key": "PLEASE DO NOT REMOVE THIS LINE! Yandex.Cloud SA Key ID \u003cajedfafee3fkkludpern\u003e\n-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG1nH11wswp8h+WqhJYSqXxN97HBTWsvjBOF8r3XntV53gnQKBgQDfTj/eXOjVFIko7ZKE\nFbJzHjm+WCZ9H0evWtsAwSvcy864Tcrpa1cKPz02ELaoxLI9xMwAq0+b7nnynlml1nXsXhuELVCadr7sk2mhVR+hhnV1G+yCKEcPbU+cbLgmMc1nG+lEpMAeDaLh13YvQgn6YymSTyPbC4v6R9wV0mliaaJoMIw96GWfnoQdYyXiI4JK+\nDcYL4JDazwKBgDcNVoeehjRJ/MqbXYy8wKLK19eKaenAgW7Eyms0NHkZsdwUKatE\nMFAxaQjUNAQFgh/iTZz30nwbEnWM567dGYPWiGDRhVFnqqvrxA0NU6LWiFkUuz7ep\nS24peFpHqnbtqLGvtKYc3GcTat6Jf+Jl-27iYhDo+Gh8yKFYAUewEu5qWB1AoGBALiz\n-9XXKyWZI6RyrUcM1BaRZ3juaA/73j73wcUG4g/-13b8aN6o8hmhbveU2uuK1JrR7rP\nv-4Vl+-5HxnHouPMwzijGbaI+sEqbzx5PzsYohX9R4BJPWoCV7zrbdFmioLdSpIEfk\nQfXJQwEINX+n6JL7KkIxHFO0YLo+hGD9WFgc\n-----END PRIVATE KEY-----\n"
+}
