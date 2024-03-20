@@ -104,8 +104,6 @@ popd
 # 2 создаем переменные для terraform
 cd terraform
 ./make-tfvars.sh && mv terraform.tfvars.conf terraform.tfvars
-# 2.1 добавляем в конфиг тераформа переменную для балансировщика
-echo "instance_count = 2" >> terraform.tfvars
 
 # 3 терраформируем
 terraform validate
