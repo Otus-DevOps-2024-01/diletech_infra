@@ -101,9 +101,12 @@ set -l packer_build "packer build -var-file=variables.json -var subnet_id=$YC_SU
 pushd packer; eval $packer_validate; and eval $packer_build; or exit 1
 popd
 
-# 2 создаем переменные для terraform
+# 2 подготоавливаем терраформ
 cd terraform
+# 2.1 создаем переменные для terraform
 ./make-tfvars.sh && mv terraform.tfvars.conf terraform.tfvars
+# 2.2 воркараунд: применяем спрятанный от гитакшэн файл
+cp yc_terraform.tf.txt yc_terraform.tf
 
 # 3 терраформируем
 terraform validate

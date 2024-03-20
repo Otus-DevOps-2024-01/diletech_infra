@@ -6,3 +6,5 @@ key.json
 *.tfstate.backup
 *.tfvars
 .terraform/
+
+yc_terraform.tf
