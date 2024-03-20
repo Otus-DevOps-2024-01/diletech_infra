@@ -23,3 +23,7 @@ variable "service_account_key_file" {
 variable "private_key_path" {
   description = "Path to the privete key used for ssh access"
 }
+variable "instance_count" {
+  description = "Count create instance app"
+  default     = 1
+}
