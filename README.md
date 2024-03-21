@@ -107,6 +107,8 @@ cd terraform
 ./make-tfvars.sh && mv terraform.tfvars.conf terraform.tfvars
 # 2.2 воркараунд: применяем спрятанный от гитакшэн файл
 cp yc_terraform.tf.txt yc_terraform.tf
+# 2.3 для nlb применить настрйку количества нод
+echo "instance_count = 2" >> terraform.tfvars
 
 # 3 терраформируем
 terraform validate
@@ -122,4 +124,35 @@ curl -sivm3 $IP:9292 | head
 # 5. удаляем всё
 terraform destroy
 yc_all_delete_confirm all
+```
+
+### Terraform-2
+```fish
+# 0. применить не забыть
+source my-yc-command.fish; yc_vpc_network_create; yc_vpc_subnet_create # создать vpc и subnet
+yc_get_variables  # получить переменные yc
+
+# 1. собираем пакером имиджи
+pushd packer
+set -l p "-var-file=variables.json -var subnet_id=$YC_SUBNET_ID"
+for f in {app,db}.json; for c in validate build; packer $c $p $f; or exit 1; end; end
+popd
+
+# 2. начинаем терраформ
+cd terraform
+# 2.1 создаем переменные динамические
+./make-tfvars.sh && mv terraform.tfvars.conf terraform.tfvars
+# 2.2.1 оприделение того где брать провайдера yc
+cp -av yc_terraform.tf.txt yc_terraform.tf
+# 2.2.1 также для модулей создаем символические ссылки на провайдера yc
+for d in app db; pushd modules/$d; ln -sf ../../yc_terraform.tf; popd; end
+
+# 3. терраформим
+terraform get
+terraform init -upgrade
+terraform plan
+terraform apply -auto-approve
+# 3.1 после изменений outputs.tf
+terraform refresh
+terraform output
 ```

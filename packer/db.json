@@ -1,0 +1,49 @@
+{
+    "builders": [
+        {
+            "type": "yandex",
+            "folder_id": "{{ user `folder_id` }}",
+            "service_account_key_file": "{{ user `service_account_key_file` }}",
+            "source_image_id": "{{ user `source_image_id` }}",
+            "source_image_family": "ubuntu-1604-lts",
+            "image_name": "reddit-db-base-{{timestamp}}",
+            "image_family": "reddit-db-base",
+            "ssh_username": "ubuntu",
+            "platform_id": "standard-v1",
+            "use_ipv4_nat": "true",
+            "subnet_id": "{{ user `subnet_id` }}"
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "shell",
+            "script": "scripts/apt_prep.sh",
+            "execute_command": "sudo {{.Path}}"
+        },
+        {
+            "type": "shell",
+            "script": "scripts/install_mongodb.sh",
+            "execute_command": "sudo {{.Path}}"
+        },
+        {
+            "type": "shell",
+            "inline": [
+                "echo TESTING: running MongoDB and check connection",
+                "echo step1: starting mongod",
+                "sudo systemctl start mongod",
+                "echo step2: waiting for MongoDB to start",
+                "sleep 10",
+                "CHECK_PORT=27017",
+                "echo step3: checking port $CHECK_PORT",
+                "NC_STATUS=$(nc -z localhost $CHECK_PORT >/dev/null 2>&1; echo $?)",
+                "echo check MongoDB status on port $CHECK_PORT: NC_STATUS=$NC_STATUS",
+                "if [ $NC_STATUS -eq 0 ]; then",
+                "  echo \"MongoDB is running on port $CHECK_PORT\"",
+                "else",
+                "  echo \"MongoDB is not running on port $CHECK_PORT\"",
+                "fi",
+                "exit $NC_STATUS"
+            ]
+        }
+    ]
+}

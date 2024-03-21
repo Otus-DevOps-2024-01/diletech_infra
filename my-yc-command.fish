@@ -1,5 +1,5 @@
-export YC_VPC_NAME="infra"
-export YC_SUBNET_NAME="subnet1-a"
+export YC_VPC_NAME="app-network"
+export YC_SUBNET_NAME="app-subnet"
 export YC_ZONE="ru-central1-a"
 
 export YC_VM_NAME="reddit-app"
@@ -55,14 +55,14 @@ end
 function yc_vpc_network_create
     yc vpc network create \
         --name $YC_VPC_NAME \
-        --description "infra network"
+        --description "app network"
 end
 
 function yc_vpc_subnet_create
     yc vpc subnet create \
         --name $YC_SUBNET_NAME \
-        --description "infra subnet" \
-        --network-name infra \
+        --description "app subnet" \
+        --network-name $YC_VPC_NAME \
         --zone $YC_ZONE \
         --range 10.16.8.0/24
 end
@@ -119,7 +119,7 @@ function yc_all_delete
         echo "Starting deletion process..."
         echo "You have 10 seconds to cancel the operation by pressing Ctrl+C"
 
-        for i in (seq 1 -1 1)
+        for i in (seq 10 -1 1)
             echo -n "Deletion will proceed in $i seconds... "
             sleep 1
             echo ""
