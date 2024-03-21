@@ -1,2 +1,10 @@
 variables.json
 key.json
+
+*.tfstate
+*.tfstate.*.backup
+*.tfstate.backup
+*.tfvars
+.terraform/
+
+yc_terraform.tf

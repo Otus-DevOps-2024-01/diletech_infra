@@ -85,3 +85,41 @@ ___
 
 6. всё удаляем
     `yc_all_delete_confirm`
+
+### Terraform-1
+``` shell
+# 0. смотрим на ресурсы и создаем сеть если нету и получаем переменные
+source my-yc-command.fish
+yc_list_all  # смотреть что есть
+source my-yc-command.fish; yc_vpc_network_create; yc_vpc_subnet_create # создать сети
+yc_get_variables  # получить переменные через yc
+yc_print_variables  # вывести имеющиеся переменные YC_*
+
+# 1. запекаем базовый образ
+set -l packer_validate "packer validate -var-file=variables.json -var subnet_id=$YC_SUBNET_ID ubuntu16.json"
+set -l packer_build "packer build -var-file=variables.json -var subnet_id=$YC_SUBNET_ID ubuntu16.json"
+pushd packer; eval $packer_validate; and eval $packer_build; or exit 1
+popd
+
+# 2 подготоавливаем терраформ
+cd terraform
+# 2.1 создаем переменные для terraform
+./make-tfvars.sh && mv terraform.tfvars.conf terraform.tfvars
+# 2.2 воркараунд: применяем спрятанный от гитакшэн файл
+cp yc_terraform.tf.txt yc_terraform.tf
+
+# 3 терраформируем
+terraform validate
+terraform init
+terraform plan
+terraform apply
+
+# 4. проверяем
+set -Ux IP (terraform output external_ip_address_app|tr -d '"')
+ssh -i ~/.ssh/yc ubuntu@$IP id
+curl -sivm3 $IP:9292 | head
+
+# 5. удаляем всё
+terraform destroy
+yc_all_delete_confirm all
+```

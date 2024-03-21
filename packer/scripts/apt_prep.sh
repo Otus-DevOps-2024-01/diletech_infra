@@ -63,13 +63,13 @@ for file in "${files[@]}"; do
     fi
 done
 
-
 # Проверяем наличие установленного пакета apt-transport-https
 if ! dpkg -s apt-transport-https &>/dev/null; then
     echo "Пакет apt-transport-https не установлен. Установка..."
     sudo apt-get update
     sudo apt-get install -y apt-transport-https
+else
+    echo "Пакет apt-transport-https установлен."
 fi
-apt-get update && apt-get install -y apt-transport-https
 apt-get clean -y
 exit 0
