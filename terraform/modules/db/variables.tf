@@ -8,3 +8,6 @@ variable "db_disk_image" {
 variable "subnet_id" {
   description = "Subnets for modules"
 }
+variable "vm_name_db" {
+  description = "Name for the VM instance"
+}

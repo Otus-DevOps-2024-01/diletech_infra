@@ -1,0 +1,8 @@
+cloud_id = "2535795bdb3115458e2f"
+folder_id = "e5d9741e4e4b01b8b6b9"
+zone = "ru-central1-a"
+image_id = "b2bcaf6c824cddef84bd"
+public_key_path = "~/.ssh/yc.pub"
+private_key_path = "~/.ssh/yc"
+subnet_id = "dbd678559263ad5f5b2c"
+service_account_key_file = "key.json"

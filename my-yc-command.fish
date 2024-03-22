@@ -54,17 +54,24 @@ end
 #======= BEGIN CREATE FUNCTION NETWORK ======================================================
 function yc_vpc_network_create
     yc vpc network create \
-        --name $YC_VPC_NAME \
-        --description "app network"
+        --name $YC_VPC_NAME
 end
 
 function yc_vpc_subnet_create
+    set -l SUBNET_NAME $argv[1]
+
+    if test -z "$SUBNET_NAME"
+        set SUBNET_NAME $YC_SUBNET_NAME
+    end
+
+    set -l oct2 (shuf -i 0-255 -n 1)
+    set -l oct3 (shuf -i 0-255 -n 1)
+
     yc vpc subnet create \
-        --name $YC_SUBNET_NAME \
-        --description "app subnet" \
+        --name $SUBNET_NAME \
         --network-name $YC_VPC_NAME \
         --zone $YC_ZONE \
-        --range 10.16.8.0/24
+        --range "10.$oct2.$oct3.0/24"
 end
 
 function yc_vpc_address_create

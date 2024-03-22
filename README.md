@@ -92,6 +92,8 @@ ___
 source my-yc-command.fish
 yc_list_all  # смотреть что есть
 source my-yc-command.fish; yc_vpc_network_create; yc_vpc_subnet_create # создать сети
+# две сети прод и стедж
+set -l D stage prod; for d in $D; yc_vpc_subnet_create "app-subnet-$d"; end
 yc_get_variables  # получить переменные через yc
 yc_print_variables  # вывести имеющиеся переменные YC_*
 
@@ -128,31 +130,57 @@ yc_all_delete_confirm all
 
 ### Terraform-2
 ```fish
-# 0. применить не забыть
-source my-yc-command.fish; yc_vpc_network_create; yc_vpc_subnet_create # создать vpc и subnet
-yc_get_variables  # получить переменные yc
+set -l D stage prod # среды окружения разделенные по одноименным папкам
+# 0. подготовка сетей если их нет
+source my-yc-command.fish; yc_vpc_network_create; yc_vpc_subnet_create  # создать vpc и subnet
+for d in $D; yc_vpc_subnet_create "app-subnet-$d"; end  # две подсети для сред терраформа
+yc_get_variables  # получить переменные yc, для пакер нужен subnet-id
 
-# 1. собираем пакером имиджи
+
+# 1. запекаем пакером имиджи
 pushd packer
 set -l p "-var-file=variables.json -var subnet_id=$YC_SUBNET_ID"
-for f in {app,db}.json; for c in validate build; packer $c $p $f; or exit 1; end; end
+for f in {app,db}.json; for c in validate build; eval packer $c $p $f; or exit 1; end; end
 popd
+
 
 # 2. начинаем терраформ
 cd terraform
 # 2.1 создаем переменные динамические
-./make-tfvars.sh && mv terraform.tfvars.conf terraform.tfvars
-# 2.2.1 оприделение того где брать провайдера yc
+for d in $D; ./make-tfvars.sh $d; end
+# 2.2.1 подкладываем файл оприделения того где брать провайдера yc
 cp -av yc_terraform.tf.txt yc_terraform.tf
-# 2.2.1 также для модулей создаем символические ссылки на провайдера yc
+# 2.2.1 создаем символические ссылки на этот файл
+# для модулей
 for d in app db; pushd modules/$d; ln -sf ../../yc_terraform.tf; popd; end
+# для окружений
+for d in stage prod; pushd $d; ln -sf ../yc_terraform.tf; popd; end
+
 
 # 3. терраформим
-terraform get
-terraform init -upgrade
-terraform plan
-terraform apply -auto-approve
-# 3.1 после изменений outputs.tf
+# 3.1 создаём prod и stage
+
+# функция прогона терраформа
+function do-terraform
+  begin
+  terraform validate
+  terraform get
+  terraform init -upgrade
+  terraform refresh
+  terraform show
+  terraform plan && terraform apply -auto-approve
+  end; and return 0; or return 1
+end
+
+set -l do do-terraform
+for d in $D; pushd $d; echo "$do: $d"; eval $do ; popd; end
+# 3.2 после изменений outputs.tf
 terraform refresh
 terraform output
+
+
+# 4. удаляем
+set -l do "terraform apply -auto-approve -destroy"
+for d in $D; pushd $d; echo "$do: $d"; eval $do ; popd; end
+yc_all_delete_confirm all
 ```
