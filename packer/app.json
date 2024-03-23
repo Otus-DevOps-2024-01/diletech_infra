@@ -1,0 +1,43 @@
+{
+    "builders": [
+        {
+            "type": "yandex",
+            "folder_id": "{{ user `folder_id` }}",
+            "service_account_key_file": "{{ user `service_account_key_file` }}",
+            "source_image_id": "{{ user `source_image_id` }}",
+            "source_image_family": "ubuntu-1604-lts",
+            "image_name": "reddit-app-base-{{timestamp}}",
+            "image_family": "reddit-app-base",
+            "ssh_username": "ubuntu",
+            "platform_id": "standard-v1",
+            "use_ipv4_nat": "true",
+            "subnet_id": "{{ user `subnet_id` }}"
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "shell",
+            "script": "scripts/apt_prep.sh",
+            "execute_command": "sudo {{.Path}}"
+        },
+        {
+            "type": "shell",
+            "script": "scripts/install_ruby.sh",
+            "execute_command": "sudo {{.Path}}"
+        },
+        {
+            "type": "shell",
+            "inline": [
+                "echo TESTING: checking if Ruby is installed",
+                "if command -v ruby >/dev/null 2>&1; then",
+                "  RUBY_VERSION=$(ruby -v)",
+                "  echo \"Ruby is installed: $RUBY_VERSION\"",
+                "  exit 0",
+                "else",
+                "  echo \"Ruby is not installed\"",
+                "  exit 1",
+                "fi"
+            ]
+        }
+    ]
+}
