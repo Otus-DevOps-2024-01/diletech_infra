@@ -33,9 +33,27 @@ variable "db_disk_image" {
   default     = "reddit-db-base"
 }
 variable "vm_name_app" {
+  default     = "reddit-db"
   description = "Name for the VM instance"
-
 }
 variable "vm_name_db" {
+  default     = "reddit-db"
   description = "Name for the VM instance"
 }
+
+
+### BEGIN var S3 backet for remote backend
+variable "bucket_name" {
+  description = "Name of backet for tfstate"
+}
+variable "bucket_secret" {
+  description = "Secret of backet for tfstate"
+}
+variable "bucket_key_id" {
+  description = "Key id of backet for tfstate"
+}
+variable "bucket_key_name" {
+  default     = "default-terraform.state"
+  description = "Key name of backet for tfstate"
+}
+### END var S3 backet for remote backend

@@ -9,3 +9,8 @@ app_disk_image           = "${TF_APP_DISK_IMAGE}"
 db_disk_image            = "${TF_DB_DISK_IMAGE}"
 vm_name_db           = "${TF_VM_NAME_DB}"
 vm_name_app          = "${TF_VM_NAME_APP}"
+
+bucket_name     = "${TF_BUCKET_NAME}"
+bucket_secret   = "${TF_BUCKET_SECRET}"
+bucket_key_id   = "${TF_BUCKET_KEY_ID}"
+bucket_key_name = "${TF_BUCKET_KEY_NAME}"

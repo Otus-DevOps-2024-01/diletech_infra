@@ -146,34 +146,36 @@ popd
 
 # 2. начинаем терраформ
 cd terraform
-# 2.1 создаем переменные динамические
-for d in $D; ./make-tfvars.sh $d; end
-# 2.2.1 подкладываем файл оприделения того где брать провайдера yc
-cp -av yc_terraform.tf.txt yc_terraform.tf
-# 2.2.1 создаем символические ссылки на этот файл
-# для модулей
-for d in app db; pushd modules/$d; ln -sf ../../yc_terraform.tf; popd; end
+# 2.0 настройка источника поставки бинарей на зеркало
+cp -av terraformrc.txt ~/.terraformrc
+# 2.1.2 создаем символические ссылки на файл оприделения провайдера yc
+set -l yc_tf yc_terraform.tf
+# для модулей (vpc не используется)
+for d in app db vpc; pushd modules/$d; ln -vsf ../../$yc_tf.txt $yc_tf; popd; end
 # для окружений
-for d in stage prod; pushd $d; ln -sf ../yc_terraform.tf; popd; end
-
+for d in $D; pushd $d; ln -vsf ../$yc_tf.txt $yc_tf; popd; end
+# 2.2 для окружений эти файлы одинаковые на данный момент, но так как vscode не видит ссылки и краснеет, поэтому дублируем иноды
+for d in $D; pushd $d; for f in backend.tf variables.tf; ln -f ../$f .; end; popd; end
+# 2.1 создаем переменные динамические variables.tf
+# и тут же делаем скрипты инициализации terraform_init.sh для инициализации  ремоут бэкендов
+./make-tfvars.sh
 
 # 3. терраформим
-# 3.1 создаём prod и stage
-
 # функция прогона терраформа
 function do-terraform
   begin
   terraform validate
   terraform get
+  ./terraform_init.sh
   terraform init -upgrade
   terraform refresh
   terraform show
   terraform plan && terraform apply -auto-approve
   end; and return 0; or return 1
 end
-
+# 3.1 создаём prod и stage
 set -l do do-terraform
-for d in $D; pushd $d; echo "$do: $d"; eval $do ; popd; end
+for d in . $D; pushd $d; echo "$do: $d"; eval $do ; popd; end
 # 3.2 после изменений outputs.tf
 terraform refresh
 terraform output
@@ -181,6 +183,6 @@ terraform output
 
 # 4. удаляем
 set -l do "terraform apply -auto-approve -destroy"
-for d in $D; pushd $d; echo "$do: $d"; eval $do ; popd; end
-yc_all_delete_confirm all
+for d in . $D; pushd $d; echo "$do: $d"; eval $do ; popd; end
+set -x YC_CONFIRM_DELETE yes; yc_all_delete_confirm all; set -e YC_CONFIRM_DELETE
 ```
