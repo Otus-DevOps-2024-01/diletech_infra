@@ -6,8 +6,8 @@
             "service_account_key_file": "{{ user `service_account_key_file` }}",
             "source_image_id": "{{ user `source_image_id` }}",
             "source_image_family": "ubuntu-1604-lts",
-            "image_name": "reddit-base-{{timestamp}}",
-            "image_family": "reddit-base",
+            "image_name": "reddit-db-base-{{timestamp}}",
+            "image_family": "reddit-db-base",
             "ssh_username": "ubuntu",
             "platform_id": "standard-v1",
             "use_ipv4_nat": "true",
@@ -18,11 +18,6 @@
         {
             "type": "shell",
             "script": "scripts/apt_prep.sh",
-            "execute_command": "sudo {{.Path}}"
-        },
-        {
-            "type": "shell",
-            "script": "scripts/install_ruby.sh",
             "execute_command": "sudo {{.Path}}"
         },
         {

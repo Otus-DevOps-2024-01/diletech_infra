@@ -1,5 +1,5 @@
-export YC_VPC_NAME="infra"
-export YC_SUBNET_NAME="subnet1-a"
+export YC_VPC_NAME="app-network"
+export YC_SUBNET_NAME="app-subnet"
 export YC_ZONE="ru-central1-a"
 
 export YC_VM_NAME="reddit-app"
@@ -10,6 +10,7 @@ export YC_SUBNET_ID=""
 export YC_IMAGE_ID=""
 export YC_STATIC_IP_ADDRESS=""
 
+export YC_S3_BACKET_NAME="diletech-terraform-state"
 
 set objects 'compute instance
 compute image
@@ -17,7 +18,8 @@ load-balancer network-load-balancer
 load-balancer target-group
 vpc subnet
 vpc network
-vpc address'
+vpc address
+storage bucket'
 
 function yc_get_variables
     export YC_SUBNET_ID="$(yc vpc subnet list --format json | jq -r --arg name $YC_SUBNET_NAME '.[] | select(.name == $name) | .id')"
@@ -37,6 +39,16 @@ end
 
 function yc_delete_enum
     set obj $argv
+
+    #если эти то удаляем по name и выходим
+    if test "$obj" = "storage bucket"
+        for name in (yc $obj list --format json | jq -r '.[].name')
+            yc $obj delete --name=$name
+        end
+        return 0
+    end
+
+    #остальные удаляем по id
     for id in (yc $obj list --format json | jq -r '.[].id')
         yc $obj delete --id=$id
     end
@@ -54,17 +66,24 @@ end
 #======= BEGIN CREATE FUNCTION NETWORK ======================================================
 function yc_vpc_network_create
     yc vpc network create \
-        --name $YC_VPC_NAME \
-        --description "infra network"
+        --name $YC_VPC_NAME
 end
 
 function yc_vpc_subnet_create
+    set -l SUBNET_NAME $argv[1]
+
+    if test -z "$SUBNET_NAME"
+        set SUBNET_NAME $YC_SUBNET_NAME
+    end
+
+    set -l oct2 (shuf -i 0-255 -n 1)
+    set -l oct3 (shuf -i 0-255 -n 1)
+
     yc vpc subnet create \
-        --name $YC_SUBNET_NAME \
-        --description "infra subnet" \
-        --network-name infra \
+        --name $SUBNET_NAME \
+        --network-name $YC_VPC_NAME \
         --zone $YC_ZONE \
-        --range 10.16.8.0/24
+        --range "10.$oct2.$oct3.0/24"
 end
 
 function yc_vpc_address_create
@@ -107,6 +126,10 @@ function yc_cumpute_instance_create_with_image-id_and_static-ip
 end
 #======= END CREATE ==========================================================
 
+#======= BEGIN CREATE BACKET =================================================
+function yc_backet_create_for_tfstate
+    yc storage bucket create --name $YC_S3_BACKET_NAME --max-size 10000000
+end
 
 #======= BEGIN DELETE FUNCTION ===============================================
 function yc_all_delete
@@ -119,7 +142,7 @@ function yc_all_delete
         echo "Starting deletion process..."
         echo "You have 10 seconds to cancel the operation by pressing Ctrl+C"
 
-        for i in (seq 1 -1 1)
+        for i in (seq 10 -1 1)
             echo -n "Deletion will proceed in $i seconds... "
             sleep 1
             echo ""
@@ -128,7 +151,8 @@ function yc_all_delete
         # Исключаемые объекты из обработки удаления в зависимости от mode
         set skip_objects 'vpc subnet
 vpc network
-compute image'
+compute image
+storage bucket'
 
         # В зависимости от ключа удаляем всё или с исключением
         if test "$mode" = all
@@ -168,7 +192,7 @@ function yc_all_delete_confirm
 
     # Проверка получаемого значения ключа
     set -l mode $argv[1]
-    if test "$mode" != "all" -a "$mode" != "skip"
+    if test "$mode" != all -a "$mode" != skip
         echo "Usage: yc_all_delete_confirm [all|skip]"
         return
     end
