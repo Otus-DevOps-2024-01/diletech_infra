@@ -1,0 +1,155 @@
+version: "3"
+
+tasks:
+  make:
+    desc: "Сделать всю инфру с нуля"
+    cmds:
+      - task: yc_prepare
+      - task: packer_build
+      - task: terraform_make
+
+  terraform_make:
+    desc: "Создание Terraform"
+    cmds:
+      - task: terraform_init
+      - task: terraform_apply
+
+  yc_prepare:
+    desc: "Подготовка сетей, сервисного аккаунта и бакета"
+    cmds:
+      # - sh ./vm-make-config.sh
+      - |
+        fish -c 'source my-yc-command.fish && \
+        set -l D stage prod && \
+        yc_vpc_network_create && \
+        yc_vpc_subnet_create && \
+        yc_get_variables && \
+        for d in $D; yc_vpc_subnet_create "app-subnet-$d"; end && \
+        yc_backet_create_for_tfstate && \
+        for svc in packerbuilder terraform
+          yc_create_svc_acc $svc
+        end && \
+        echo Done'
+  packer_build:
+    desc: "Запекание образов Packer"
+    cmds:
+      - |
+        fish -c 'source my-yc-command.fish && \
+        yc_get_variables && \
+        cd packer && \
+        set -l p "-var-file=variables.json -var subnet_id=$YC_SUBNET_ID" && \
+        for f in {app,db}.json
+          for c in validate build
+            echo Запуск Packer $c c $p для файла шаблона $f
+            eval packer $c $p $f; or exit 1
+          end
+        end
+        echo Done'
+
+  terraform_init:
+    desc: "Инициализация Terraform"
+    dir: terraform
+    cmds:
+      - |
+        fish -c 'cp -av terraformrc.txt ~/.terraformrc && \
+        set -l yc_tf yc_terraform.tf && \
+        for d in app db vpc; pushd modules/$d; ln -vsf ../../$yc_tf.txt $yc_tf; popd; end && \
+        for d in $D; pushd $d; ln -vsf ../$yc_tf.txt $yc_tf; popd; end && \
+        for d in $D; pushd $d; for f in backend.tf variables.tf; ln -f ../$f .; end; popd; end && \
+        ./make-tfvars.sh && \
+        echo Done'
+    shell: fish
+
+  terraform_apply:
+    desc: "Применение конфигурации Terraform"
+    dir: terraform
+    cmds:
+      - |
+        fish -c 'function do-terraform
+          begin
+          terraform get
+          ./terraform_init.sh
+          terraform init -upgrade
+          terraform validate
+          terraform refresh
+          terraform show
+          terraform plan && terraform apply -auto-approve
+          end && return 0 || return 1
+        end && \
+        set -l do do-terraform && \
+        set -l D stage prod && \
+        for d in . $D; pushd $d; echo "$do -> $d"; eval $do; popd; end && \
+        echo Done'
+    shell: fish
+
+  clean:
+    desc: "Удаление ресурсов Terraform и очистка облака"
+    cmds:
+      - |
+        fish -c 'source my-yc-command.fish && \
+        yc_get_variables && \
+        pushd terraform  &&  \
+        set -l D stage prod && \
+        set -l do "terraform apply -auto-approve -destroy" && \
+        for d in . $D; pushd $d; echo "$do -> $d"; eval $do; popd; end && \
+        popd && \
+        set -x YC_CONFIRM_DELETE yes; yc_all_delete_confirm all; set -e YC_CONFIRM_DELETE && \
+        fd -HI -e tfstate -e tfstate.backup -X rm -fv && \
+        fd -HItd .terraform -X rm -rfv && \
+        echo Done'
+
+  show:
+    desc: "Просмотр всех ресурсов"
+    cmds:
+      - task: show-yc
+      - task: terraform-show
+      - task: terraform-output
+  show-yc:
+    desc: "Просмотр облачных ресурсов"
+    cmds:
+      - |
+        fish -c 'source my-yc-command.fish  &&  \
+        yc_list_all  &&  \
+        echo Done'
+  terraform-output:
+    desc: "Вывод переменных Terraform"
+    dir: terraform
+    cmds:
+      - |
+        fish -c 'set -l D stage prod && \
+        set -l do "terraform output" && \
+        for d in . $D; pushd $d; echo "$do -> $d"; eval $do; popd; end && \
+        echo Done'
+  terraform-show:
+    desc: "Вывод конфига ресурсов Terraform"
+    dir: terraform
+    cmds:
+      - |
+        fish -c 'set -l D stage prod && \
+        set -l do "terraform show" && \
+        for d in . $D; pushd $d; echo "$do -> $d"; eval $do; popd; end && \
+        echo Done'
+
+  install_prereq:
+    desc: "Установка необходимых пакетов"
+    cmds:
+      - task: install_python
+      - task: install_ansible
+  install_python:
+    desc: "установить/обновить Python"
+    cmds:
+      - |
+        sudo apt update && \
+        sudo apt install -y --no-install-recommends  --no-install-suggests python3 python3-pip pipx  &&  \
+        apt list --upgradable 2>/dev/null | \
+        awk -F\/ '$1~/python/ {print $1}' | \
+        xargs sudo apt install -y --only-upgrade
+      - pip3 install -r requirements.txt
+
+  install_ansible:
+    desc: "установить/обновить Ansible"
+    cmds:
+      - pipx ensurepath
+      - pipx install --include-deps ansible
+      - pipx inject --include-apps ansible argcomplete
+      - pipx upgrade --include-injected ansible
