@@ -52,7 +52,6 @@ ___
 `packer build -var 'source_image_id=fd85t6ulvuvp8q3trhbe' -var 'skip_create_image=true'  --var-file=variables.json .\ubuntu16.json`
 - собственные команды автоматизации `yc` для fish
 `source my-yc-command.fish`
-- `vm-make-config.sh` готовит vm-config.txt из vm-init.tpl, используется в `yc compute instance create` для передачи параметров как `--metadata-from-file user-data=$YC_VM_CONFIG`
 
 
 ###### запуск для packer
@@ -106,7 +105,6 @@ popd
 # 2 подготоавливаем терраформ
 cd terraform
 # 2.1 создаем переменные для terraform
-./make-tfvars.sh && mv terraform.tfvars.conf terraform.tfvars
 # 2.2 воркараунд: применяем спрятанный от гитакшэн файл
 cp yc_terraform.tf.txt yc_terraform.tf
 # 2.3 для nlb применить настрйку количества нод
@@ -132,9 +130,15 @@ yc_all_delete_confirm all
 ```fish
 set -l D stage prod # среды окружения разделенные по одноименным папкам
 # 0. подготовка сетей если их нет
-source my-yc-command.fish; yc_vpc_network_create; yc_vpc_subnet_create  # создать vpc и subnet
+source my-yc-command.fish
+# создать vpc и subnet
+yc_vpc_network_create; yc_vpc_subnet_create
 for d in $D; yc_vpc_subnet_create "app-subnet-$d"; end  # две подсети для сред терраформа
 yc_get_variables  # получить переменные yc, для пакер нужен subnet-id
+# С3-бакет для тераформа
+yc_backet_create_for_tfstate
+# создание сервисного аккаунта
+yc_create_svc_acc terraform
 
 
 # 1. запекаем пакером имиджи
@@ -145,7 +149,7 @@ popd
 
 
 # 2. начинаем терраформ
-cd terraform
+pushd terraform
 # 2.0 настройка источника поставки бинарей на зеркало
 cp -av terraformrc.txt ~/.terraformrc
 # 2.1.2 создаем символические ссылки на файл оприделения провайдера yc
@@ -158,7 +162,6 @@ for d in $D; pushd $d; ln -vsf ../$yc_tf.txt $yc_tf; popd; end
 for d in $D; pushd $d; for f in backend.tf variables.tf; ln -f ../$f .; end; popd; end
 # 2.1 создаем переменные динамические variables.tf
 # и тут же делаем скрипты инициализации terraform_init.sh для инициализации  ремоут бэкендов
-./make-tfvars.sh
 
 # 3. терраформим
 # функция прогона терраформа
@@ -185,4 +188,53 @@ terraform output
 set -l do "terraform apply -auto-approve -destroy"
 for d in . $D; pushd $d; echo "$do: $d"; eval $do ; popd; end
 set -x YC_CONFIRM_DELETE yes; yc_all_delete_confirm all; set -e YC_CONFIRM_DELETE
+# 4.1 полностью очистить состояние для тераформа
+#  fd -HI -e tfstate -e tfstate.backup -X rm -fv; fd -HItd .terraform -X rm -rfv
 ```
+
+### Ansible-1
+#### prepare
+`task update_python_and_install_ansible` делает это
+```sh
+# обновить Python
+apt list --upgradable 2>/dev/null | /
+  awk -F\/ '$1~/python/ {print $1}' | /
+  xargs sudo apt install -y --only-upgrade
+# установка ансибл
+pipx install --include-deps ansible
+pipx inject --include-apps ansible argcomplete
+# либо обновление
+pipx upgrade --include-injected ansible
+# install a couple of modules :-)
+pip3 install -r requirements.txt
+```
+
+`task --list` делает всякое:
+- основные комбаины `make` `clean` `show`
+- отдельно произвести этапы `yc_prepare` `packer_build` `terraform_make`
+- вспомагательный `install_prereq`
+
+#### inventory
+конвертация инвентори
+```
+ansible-inventory -i inventory.ini -y --list > inventory.yaml
+ansible-inventory -i inventory.ini --list > inventory.json
+```
+info: при добавлении плагинов динамической инвентаризации, скрипты динамической авторизации оставили для совместимости, и рекомендуется применять именно плагины
+
+для динамического инвентори в ansible.cfg добавлены строки для указания папки с инвентори (там два срипта один мой, другой не мой)
+```
+inventory = ./inventory_dir
+inventory_ignore_patterns = hosts111.py
+```
+```
+inventory_dir
+├── hosts111.py
+├── hosts.py -- этот с гитхаба плагин для YC
+└── inventory.sh
+```
+где следющие файлы:
+- inventory.sh -- шелл использует вывод тераформ аутпут из запуска task на ввод для парсинга скриптом, с последующим вызовом конвертации в json
+- hosts111.py -- самопальный парсинг вывода terraform output в файл inventory
+- hosts.py -- c гитхаба плагин для YC
+и проверить `ansible all -m ping`
