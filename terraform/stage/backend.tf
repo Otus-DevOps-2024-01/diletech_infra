@@ -3,11 +3,11 @@ terraform {
     endpoints = {
       s3 = "https://storage.yandexcloud.net"
     }
-    bucket     = var.backet_name
+    bucket     = var.bucket_name
     region     = "ru-central1"
-    key        = var.backet_key_name
+    key        = var.bucket_key_name
     access_key = var.bucket_key_id
-    secret_key = var.backet_secret
+    secret_key = var.bucket_secret
 
     skip_region_validation      = true
     skip_credentials_validation = true
