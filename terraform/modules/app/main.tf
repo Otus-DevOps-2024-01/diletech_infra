@@ -1,12 +1,16 @@
 resource "yandex_compute_instance" "app" {
-  name = var.vm_name_app
+  name                      = var.vm_name_app
+  allow_stopping_for_update = true
+  platform_id               = "standard-v2"
+
 
   labels = {
     tags = "reddit-app"
   }
   resources {
-    cores  = 2
-    memory = 2
+    cores         = 2
+    memory        = 0.5
+    core_fraction = 5
   }
 
   boot_disk {
@@ -21,6 +25,10 @@ resource "yandex_compute_instance" "app" {
   }
 
   metadata = {
-    ssh-keys = "ubuntu:${file(var.public_key_path)}"
+    ssh-keys = "appuser:${file(var.public_key_path)}"
+  }
+
+  scheduling_policy {
+    preemptible = true
   }
 }

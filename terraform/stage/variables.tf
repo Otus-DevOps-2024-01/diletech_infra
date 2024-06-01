@@ -42,18 +42,18 @@ variable "vm_name_db" {
 }
 
 
-### BEGIN var S3 backet for remote backend
+### BEGIN var S3 bucket for remote backend
 variable "bucket_name" {
-  description = "Name of backet for tfstate"
+  description = "Name of bucket for tfstate"
 }
 variable "bucket_secret" {
-  description = "Secret of backet for tfstate"
+  description = "Secret of bucket for tfstate"
 }
 variable "bucket_key_id" {
-  description = "Key id of backet for tfstate"
+  description = "Key id of bucket for tfstate"
 }
 variable "bucket_key_name" {
   default     = "default-terraform.state"
-  description = "Key name of backet for tfstate"
+  description = "Key name of bucket for tfstate"
 }
-### END var S3 backet for remote backend
+### END var S3 bucket for remote backend

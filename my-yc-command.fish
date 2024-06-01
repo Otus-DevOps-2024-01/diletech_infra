@@ -1,6 +1,17 @@
+# удалить токен что бы не было ошибок у тулз хашикорпа типа:
+#* one of token or service account key file must be specified, not both
+set -e YC_TOKEN
+
+
+#export YC_FOLDER_NAME="infra"
+#export YC_FOLDER_ID="b1gshdlom4ja7p28n0fl"
+export YC_FOLDER_NAME=$(yc config get folder-name)
+export YC_FOLDER_ID=$(yc config get folder-id)
+
 export YC_VPC_NAME="app-network"
 export YC_SUBNET_NAME="app-subnet"
-export YC_ZONE="ru-central1-a"
+#export YC_ZONE="ru-central1-a"
+export YC_ZONE=$(yc config get compute-default-zone)
 
 export YC_VM_NAME="reddit-app"
 export YC_VM_CONFIG="vm-config.txt"
@@ -10,7 +21,10 @@ export YC_SUBNET_ID=""
 export YC_IMAGE_ID=""
 export YC_STATIC_IP_ADDRESS=""
 
-export YC_S3_BACKET_NAME="diletech-terraform-state"
+export YC_S3_BUCKET_NAME="diletech-terraform-state"
+
+export YC_S3_ENDPOINT_URL="https://storage.yandexcloud.net"
+
 
 set objects 'compute instance
 compute image
@@ -19,18 +33,15 @@ load-balancer target-group
 vpc subnet
 vpc network
 vpc address
-storage bucket'
+storage bucket
+iam service-account'
 
+
+#======= START BLOCK CALLBACK FUNCTIONS ================================
 function yc_get_variables
     export YC_SUBNET_ID="$(yc vpc subnet list --format json | jq -r --arg name $YC_SUBNET_NAME '.[] | select(.name == $name) | .id')"
     export YC_IMAGE_ID="$(yc compute image list --format json | jq -r '.[0].id')"
     export YC_STATIC_IP_ADDRESS="$(yc vpc address list --format json | jq -r --arg name $YC_STATIC_IP_NAME '.[] | select(.name == $name) | .external_ipv4_address.address')"
-end
-
-function yc_print_variables
-    for var in (env | grep "^YC_")
-        echo $var
-    end
 end
 
 function yc_list_object
@@ -43,6 +54,7 @@ function yc_delete_enum
     #если эти то удаляем по name и выходим
     if test "$obj" = "storage bucket"
         for name in (yc $obj list --format json | jq -r '.[].name')
+            clean_bucket
             yc $obj delete --name=$name
         end
         return 0
@@ -54,16 +66,55 @@ function yc_delete_enum
     end
 end
 
+function yc_list_key
+    # перебор ключей для сервисных акков
+    set IDs (yc iam service-account list --format=json | jq -r '.[].id')
+    for ID in $IDs
+        echo $ID
+        for t in key api-key access-key
+            echo $t
+            yc iam $t list --service-account-id=$ID
+        end
+    end
+end
 
+function clean_bucket
+    set -l key_file (find $HOME/.yc -name '*static*' -exec grep -l 'secret:' {} +|head -n1)
+    if test -z "$key_file"
+        return
+    end
+    set -l BUCKETNAME $YC_S3_BUCKET_NAME
+    if not test (count $argv) -ne 1
+        set BUCKETNAME $argv[1]
+    end
+    set -l KEYID (grep "key_id" $key_file | cut -d: -f2 | tr -d '[:space:]')
+    set -l KEYSECRET (grep "secret" $key_file | cut -d: -f2 | tr -d '[:space:]')
+    AWS_ACCESS_KEY_ID=$KEYID \
+        AWS_SECRET_ACCESS_KEY=$KEYSECRET \
+        S3_ENDPOINT_URL=$YC_S3_ENDPOINT_URL \
+        S3_BUCKET_NAME=$BUCKETNAME \
+        ./clean-S3-bucket.py #питоновский скрипт очищающий бакет
+end
+#======= END BLOCK CALLBACK FUNCTIONS ==================================
+
+
+#======= START BLOCK INFO FUNCTIONS ====================================
 function yc_list_all
     for object in (echo $objects)
         echo LIST: $object
         eval yc_list_object $object
     end
+    yc_list_key
 end
 
+function yc_print_variables
+    for var in (env | grep "^YC_")
+        echo $var
+    end
+end
+#======= END BLOCK INFO FUNCTIONS ======================================
 
-#======= BEGIN CREATE FUNCTION NETWORK ======================================================
+#======= BEGIN CREATE FUNCTION NETWORK =================================
 function yc_vpc_network_create
     yc vpc network create \
         --name $YC_VPC_NAME
@@ -95,10 +146,10 @@ end
 function yc_vpc_prepare
     yc_vpc_network_create
     yc_vpc_subnet_create
-    yc_vpc_address_create
+    #yc_vpc_address_create
 end
 
-#======= BEGIN CREATE FUNCTION INSTANCE ======================================================
+#======= BEGIN CREATE FUNCTION INSTANCE ================================
 function yc_cumpute_instance_create_with_image-id_and_static-ip
     if test -n $YC_IMAGE_ID
         yc compute instance create \
@@ -124,14 +175,37 @@ function yc_cumpute_instance_create_with_image-id_and_static-ip
         echo not exist YC_STATIC_IP_ADDRESS
     end
 end
-#======= END CREATE ==========================================================
+#======= END CREATE ====================================================
 
-#======= BEGIN CREATE BACKET =================================================
+#======= BEGIN CREATE BACKET ===========================================
 function yc_backet_create_for_tfstate
-    yc storage bucket create --name $YC_S3_BACKET_NAME --max-size 10000000
+    yc storage bucket create --name $YC_S3_BUCKET_NAME --max-size 10000000
 end
+#======= END CREATE ====================================================
 
-#======= BEGIN DELETE FUNCTION ===============================================
+#======= BEGIN CREATE SERVICE ACC ======================================
+function yc_create_svc_acc
+    set SVC_ACCT $argv[1]
+    if test -z "$SVC_ACCT"
+        echo Usage: (status current-command) NAME_ACC
+        return
+    end
+    yc iam service-account create --name $SVC_ACCT --folder-id $YC_FOLDER_ID
+    set ACCT_ID (yc iam service-account get $SVC_ACCT | grep ^id | awk '{print $2}')
+    yc resource-manager folder add-access-binding --id $YC_FOLDER_ID \
+        --role editor \
+        --service-account-id $ACCT_ID
+    # получаем приватный ключ для тераформа и статический ключ для бакета и сохраняем инфу
+    yc iam access-key create --service-account-name $SVC_ACCT | tee ~/.yc/$SVC_ACCT-static_key.txt
+    yc iam key create --service-account-id $ACCT_ID --output ~/.yc/$SVC_ACCT-key.json
+    # выдаем права
+    yc resource-manager folder add-access-binding --id $YC_FOLDER_ID \
+        --role editor \
+        --service-account-id $ACCT_ID
+end
+#======= END CREATE ====================================================
+
+#======= BEGIN DELETE FUNCTION =========================================
 function yc_all_delete
     # Первый аргумент - режим удаления:
     # - 'all' (удалить все)
@@ -152,7 +226,8 @@ function yc_all_delete
         set skip_objects 'vpc subnet
 vpc network
 compute image
-storage bucket'
+storage bucket
+iam service-account'
 
         # В зависимости от ключа удаляем всё или с исключением
         if test "$mode" = all
@@ -205,4 +280,4 @@ function yc_all_delete_confirm
         echo "Deletion canceled."
     end
 end
-#======= END DELETE =====================================================
+#======= END DELETE ====================================================

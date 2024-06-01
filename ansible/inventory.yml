@@ -1,0 +1,22 @@
+all:
+  children:
+    app:
+      hosts:
+        appserver-prod: {}
+        appserver-stage: {}
+    db:
+      hosts:
+        dbserver-prod: {}
+        dbserver-stage: {}
+    prod:
+      hosts:
+        appserver-prod:
+          ansible_host: 158.160.58.46
+        dbserver-prod:
+          ansible_host: 158.160.38.163
+    stage:
+      hosts:
+        appserver-stage:
+          ansible_host: 51.250.86.111
+        dbserver-stage:
+          ansible_host: 84.201.174.202
