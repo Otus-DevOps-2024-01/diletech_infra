@@ -1,5 +1,8 @@
 version: "3"
 
+env:
+  D: "stage prod"
+
 tasks:
   make:
     desc: "Сделать всю инфру с нуля"
@@ -7,11 +10,13 @@ tasks:
       - task: yc_prepare
       - task: packer_build
       - task: terraform_make
+      - task: ansible_apply
+      - task: get_link
 
   terraform_make:
     desc: "Создание Terraform"
     cmds:
-      - task: terraform_init
+      - task: terraform_preinit
       - task: terraform_apply
 
   yc_prepare:
@@ -20,10 +25,10 @@ tasks:
       # - sh ./vm-make-config.sh
       - |
         fish -c 'source my-yc-command.fish && \
-        set -l D stage prod && \
         yc_vpc_network_create && \
         yc_vpc_subnet_create && \
         yc_get_variables && \
+        set -l D stage prod && \
         for d in $D; yc_vpc_subnet_create "app-subnet-$d"; end && \
         yc_backet_create_for_tfstate && \
         for svc in packerbuilder terraform
@@ -36,9 +41,8 @@ tasks:
       - |
         fish -c 'source my-yc-command.fish && \
         yc_get_variables && \
-        cd packer && \
-        set -l p "-var-file=variables.json -var subnet_id=$YC_SUBNET_ID" && \
-        for f in {app,db}.json
+        set -l p "-var-file=packer/variables.json -var subnet_id=$YC_SUBNET_ID" && \
+        for f in packer/{app,db}.json
           for c in validate build
             echo Запуск Packer $c c $p для файла шаблона $f
             eval packer $c $p $f; or exit 1
@@ -46,8 +50,8 @@ tasks:
         end
         echo Done'
 
-  terraform_init:
-    desc: "Инициализация Terraform"
+  terraform_preinit:
+    desc: "Преинициализация Terraform"
     dir: terraform
     cmds:
       - |
@@ -56,8 +60,8 @@ tasks:
         for d in app db vpc; pushd modules/$d; ln -vsf ../../$yc_tf.txt $yc_tf; popd; end && \
         for d in $D; pushd $d; ln -vsf ../$yc_tf.txt $yc_tf; popd; end && \
         for d in $D; pushd $d; for f in backend.tf variables.tf; ln -f ../$f .; end; popd; end && \
-        ./make-tfvars.sh && \
         echo Done'
+      - bash ./make-tfvars.sh
     shell: fish
 
   terraform_apply:
@@ -77,10 +81,55 @@ tasks:
           end && return 0 || return 1
         end && \
         set -l do do-terraform && \
-        set -l D stage prod && \
-        for d in . $D; pushd $d; echo "$do -> $d"; eval $do; popd; end && \
+        for d in (string split " " $D); pushd $d; echo "$do -> $d"; eval $do; popd; end && \
         echo Done'
     shell: fish
+
+  terraform_upscale:
+    desc: "Up scale VM"
+    dir: terraform
+    cmds:
+      - |
+        fish -c 'for d in (string split " " $D)
+          pushd $d
+          for f in ../modules/app/main.tf
+            sed -i "s/core_fraction =.*/core_fraction = 100/" $f
+            sed -i "s/cores *=.*/cores = 4/" $f
+            sed -i "s/memory *=.*/memory = 4/" $f
+            terraform fmt $f
+          end
+          terraform apply -auto-approve
+          terraform refresh
+          popd
+        end
+        echo Done'
+
+  terraform_downscale:
+    desc: "Down scale VM"
+    dir: terraform
+    cmds:
+      - |
+        fish -c 'for d in (string split " " $D)
+          pushd $d
+          for f in ../modules/app/main.tf
+            sed -i "s/core_fraction =.*/core_fraction = 5/" $f
+            sed -i "s/cores *=.*/cores = 2/" $f
+            sed -i "s/memory *=.*/memory = 0.5/" $f
+            terraform fmt $f
+          end
+          terraform apply -auto-approve
+          terraform refresh
+          popd
+        end
+        echo Done'
+  terraform-destroy:
+    desc: "Удаление инфры Terraform"
+    dir: terraform
+    cmds:
+      - |
+        fish -c 'set -l do "terraform apply -auto-approve -destroy"  && \
+        for d in (string split " " $D); pushd $d; echo "$do -> $d"; eval $do; popd; end && \
+        echo Done'
 
   clean:
     desc: "Удаление ресурсов Terraform и очистка облака"
@@ -96,6 +145,7 @@ tasks:
         set -x YC_CONFIRM_DELETE yes; yc_all_delete_confirm all; set -e YC_CONFIRM_DELETE && \
         fd -HI -e tfstate -e tfstate.backup -X rm -fv && \
         fd -HItd .terraform -X rm -rfv && \
+        fd -HItf terraform_init.sh -X rm -fv && \
         echo Done'
 
   show:
@@ -116,9 +166,8 @@ tasks:
     dir: terraform
     cmds:
       - |
-        fish -c 'set -l D stage prod && \
-        set -l do "terraform output" && \
-        for d in . $D; pushd $d; echo "$do -> $d"; eval $do; popd; end && \
+        fish -c 'set -l do "terraform output" && \
+        for d in (string split " " $D); pushd $d; echo "$do -> $d"; eval $do; popd; end && \
         echo Done'
   terraform-show:
     desc: "Вывод конфига ресурсов Terraform"
@@ -153,3 +202,63 @@ tasks:
       - pipx install --include-deps ansible
       - pipx inject --include-apps ansible argcomplete
       - pipx upgrade --include-injected ansible
+
+  get_link:
+    desc: "Получение ссылки на веб-приложение"
+    cmds:
+      - task terraform-output | grep app | cut -f2 -d\" | xargs -I% echo 'http://%:9292'
+
+  ansible_make:
+    desc: "Применение всей конфигурации Ansible"
+    dir: ansible
+    cmds:
+      - task: terraform_upscale
+      - task: ansible-inventory
+      - task: ansible-apply
+      - task: terraform_downscale
+      - task: ansible-inventory
+
+  ansible-inventory:
+    desc: "Получение инвентаря Ansible"
+    dir: ansible
+    cmds:
+      - task terraform-output 2>/dev/null | python3 inventory_dir/hosts111.py
+      - ansible-inventory -i inventory -y --list > inventory.yml
+      - sed -i 's/^inventory =.*/inventory = .\/inventory.yml/'  ansible.cfg
+
+  ansible-apply:
+    desc: "Применение конфигурации Ansible нужного варианта"
+    cmds:
+      - task: ansible-apply3
+
+  ansible-apply1:
+    desc: "Применение конфигурации Ansible вариант №1"
+    dir: ansible
+    cmds:
+      - ansible all -m ping
+      - ansible app -m apt -a "name=git state=present" -b
+      # - ansible-playbook clone.yml
+      - ln -s reddit_app_one_play.yml reddit_app.yml
+      - ansible-playbook reddit_app.yml --limit db --tags db-tag
+      - ansible-playbook reddit_app.yml --limit app --tags app-tag
+      - ansible-playbook bundler.yml
+      - ansible-playbook reddit_app.yml --limit app --tags deploy-tag
+      - unlink reddit_app.yml
+
+  ansible-apply2:
+    desc: "Применение конфигурации Ansible вариант №2"
+    dir: ansible
+    cmds:
+      - ansible all -m ping
+      - ln -s reddit_app_multiple_plays.yml reddit_app2.yml
+      - ansible-playbook reddit_app2.yml --tags db-tag
+      - ansible-playbook reddit_app2.yml --tags app-tag
+      - ansible-playbook reddit_app2.yml --tags deploy-tag
+      - unlink reddit_app2.yml
+
+  ansible-apply3:
+    desc: "Применение конфигурации Ansible вариант №3"
+    dir: ansible
+    cmds:
+      - ansible all -m ping
+      - ansible-playbook site.yml
