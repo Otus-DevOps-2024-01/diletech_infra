@@ -1,0 +1,23 @@
+---
+- name: Configure Application
+  hosts: app
+  become: true
+  vars:
+    db_host: "{{ hostvars[groups['db'][0]]['internal_ip'] }}"
+  tasks:
+    - name: Add unit file for Puma
+      copy:
+        src: files/puma.service
+        dest: /etc/systemd/system/puma.service
+        owner: ubuntu
+        group: ubuntu
+      notify: reload puma
+    - name: Add config for DB connection
+      template:
+        src: templates/db_config.j2
+        dest: /home/ubuntu/db_config
+    - name: enable puma
+      systemd: name=puma enabled=yes
+  handlers:
+    - name: reload puma
+      systemd: name=puma state=reloaded

@@ -16,28 +16,9 @@
     ],
     "provisioners": [
         {
-            "type": "shell",
-            "script": "scripts/apt_prep.sh",
-            "execute_command": "sudo {{.Path}}"
-        },
-        {
-            "type": "shell",
-            "script": "scripts/install_ruby.sh",
-            "execute_command": "sudo {{.Path}}"
-        },
-        {
-            "type": "shell",
-            "inline": [
-                "echo TESTING: checking if Ruby is installed",
-                "if command -v ruby >/dev/null 2>&1; then",
-                "  RUBY_VERSION=$(ruby -v)",
-                "  echo \"Ruby is installed: $RUBY_VERSION\"",
-                "  exit 0",
-                "else",
-                "  echo \"Ruby is not installed\"",
-                "  exit 1",
-                "fi"
-            ]
+            "type": "ansible",
+            "user": "ubuntu",
+            "playbook_file": "ansible/packer_app.yml"
         }
     ]
 }

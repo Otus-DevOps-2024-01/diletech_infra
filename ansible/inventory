@@ -1,15 +1,11 @@
 [prod]
-appserver-prod ansible_host=158.160.58.46
-dbserver-prod ansible_host=158.160.38.163
 
 [stage]
-appserver-stage ansible_host=51.250.86.111
-dbserver-stage ansible_host=84.201.174.202
+appserver-stage ansible_host=158.160.35.78 internal_ip=unknown
+dbserver-stage ansible_host=158.160.57.174 internal_ip=10.60.172.14
 
 [db]
-dbserver-prod ansible_host=158.160.38.163
-dbserver-stage ansible_host=84.201.174.202
+dbserver-stage ansible_host=158.160.57.174 internal_ip=10.60.172.14
 
 [app]
-appserver-prod ansible_host=158.160.58.46
-appserver-stage ansible_host=51.250.86.111
+appserver-stage ansible_host=158.160.35.78 internal_ip=unknown
