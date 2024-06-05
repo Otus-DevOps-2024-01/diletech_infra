@@ -1,0 +1,15 @@
+- name: Bundler to the concrete version
+  hosts: app
+  vars:
+    path: /home/ubuntu/reddit
+  tasks:
+    - name: Remove bundler
+      become: true
+      apt:
+        name:
+          - bundler
+          - ruby-bundler
+        state: absent
+    - name: Install bundler to the concrete version
+      become: true
+      command: bash -lc "gem install bundler -v 1.16.1"

@@ -1,7 +1,14 @@
-- name: Clone
+- name: Clone repo and install dependencies
   hosts: app
+  vars:
+    path: /home/ubuntu/reddit
   tasks:
     - name: Clone repo
       git:
         repo: https://github.com/express42/reddit.git
-        dest: /home/ubuntu/reddit
+        dest: "{{ path }}"
+    - name: Installing gem's
+      become: true
+      shell:
+        cmd: bash -lc "bundler install ; true"
+        chdir: "{{ path }}"

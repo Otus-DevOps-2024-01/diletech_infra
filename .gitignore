@@ -9,3 +9,5 @@ key.json
 
 yc_terraform.tf
 terraform_init.sh
+
+*.retry

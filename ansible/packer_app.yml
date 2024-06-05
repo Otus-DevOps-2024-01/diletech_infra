@@ -1,0 +1,18 @@
+---
+- name: Packer prepare app host
+  hosts: all
+  become: yes
+  tasks:
+    - name: apt update and install dependencies
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        clean: yes
+        name:
+          - apt-transport-https
+          - git
+          - build-essential
+          - ruby-full
+        state: present
+    - name: Install bundler to the concrete version
+      command: bash -lc "gem install bundler -v 1.16.1"

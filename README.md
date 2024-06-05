@@ -237,4 +237,29 @@ inventory_dir
 - inventory.sh -- шелл использует вывод тераформ аутпут из запуска task на ввод для парсинга скриптом, с последующим вызовом конвертации в json
 - hosts111.py -- самопальный парсинг вывода terraform output в файл inventory
 - hosts.py -- c гитхаба плагин для YC
+
 и проверить `ansible all -m ping`
+
+### Ansible-2
+#### prepare
+- `D=stage task make` так работаем только с одним stage
+- `task ansible_make` сделает всю работу а именно, получит новый инвентори и запустит плейбуки (см. `task --summary ansible_make`)
+- в terraform добавлен таск апскейл и дайнскейл, потому как для bundler минималка 1Гб и ЦПУ на все 200% и более :-), вызыввется до сборки и псоле соответсвующие таски, и также инициализация инвентори
+- получить итоговую ссылку `D=stage task -s get_link 2>/dev/null`
+#### ansible
+варинаты запуска ансибла меняется в Taskfile.yml в `task: ansible-apply`
+- реализация первого варианта запускается по таску `- Task: ansible-apply1`
+- реализация второго варианта запускается по таску `- Task: ansible-apply2`
+>TODO пока не сделан "вейтфор" сделать повторный запуск в while со seelp `D=stage task ansible_make` с выходом по if
+
+при подготовленном облаке и собраном пакере запускать можно так `D=stage task terraform_make; sleep 30 ; D=stage task ansible_make ; D=stage task get_link`
+
+но может не успеть поднятся при изменении сайза и тогда повтороный запуск так `D=stage task ansible_make` (или по другому, но главное чтобы хост даунскейлися)
+
+получить текущий линк (важно что бы terraform был refresh) `D=stage task -s get_link 2>/dev/null`
+#### packer
+после изменений провижионера со скриптов на ансибл изменённый запуск команд packer представлен в том же `task packer_build`
+
+поставить плагины, которые используются, в том числе ansible
+- `packer plugins install github.com/hashicorp/yandex`
+- `packer plugins install github.com/hashicorp/ansible`
