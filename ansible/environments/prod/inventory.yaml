@@ -1,0 +1,16 @@
+all:
+  children:
+    app:
+      hosts:
+        appserver-prod: {}
+    db:
+      hosts:
+        dbserver-prod: {}
+    prod:
+      hosts:
+        appserver-prod:
+          ansible_host: 62.84.118.197
+          internal_ip: unknown
+        dbserver-prod:
+          ansible_host: 62.84.127.58
+          internal_ip: 10.237.60.30

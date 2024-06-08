@@ -263,3 +263,17 @@ inventory_dir
 поставить плагины, которые используются, в том числе ansible
 - `packer plugins install github.com/hashicorp/yandex`
 - `packer plugins install github.com/hashicorp/ansible`
+
+### Ansible-3
+с чистого листа запуск `export DD=stage; D=$DD task make` или `export DD=prod; D=$DD task make`
+
+если YC подготовленн и пакер сбилжен, то:
+- `D=$DD task terraform_make; D=$DD task ansible_make ; D=$DD task get_link`
+
+может быть (с постоянством после первого апсайза) проблема с подключением по ssh для app, тогда пересоздать хост и повтороить так:
+- `D=$DD for D in $DD; pushd terraform/$D;terraform taint module.app.yandex_compute_instance.app; popd; end`
+
+#### ansible
+посмотерть как выглядит теперешний вариант запуска можно так: `task --summary ansible-apply4`
+
+а вызывать так `D=$DD task ansible-apply4` или полный цикл с целями инвентри и ресайзов `D=$DD task ansible_make`

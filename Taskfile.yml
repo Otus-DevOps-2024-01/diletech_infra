@@ -10,7 +10,7 @@ tasks:
       - task: yc_prepare
       - task: packer_build
       - task: terraform_make
-      - task: ansible_apply
+      - task: ansible_make
       - task: get_link
 
   terraform_make:
@@ -44,8 +44,14 @@ tasks:
         set -l p "-var-file=packer/variables.json -var subnet_id=$YC_SUBNET_ID" && \
         for f in packer/{app,db}.json
           for c in validate build
-            echo Запуск Packer $c c $p для файла шаблона $f
-            eval packer $c $p $f; or exit 1
+            set -l F true
+            while $F
+              echo Запуск Packer $c c $p для файла шаблона $f
+              eval packer $c $p $f
+              if test $status -eq 0
+                set F false
+              end
+            end
           end
         end
         echo Done'
@@ -85,8 +91,8 @@ tasks:
         echo Done'
     shell: fish
 
-  terraform_upscale:
-    desc: "Up scale VM"
+  terraform_upsize:
+    desc: "Up size VM"
     dir: terraform
     cmds:
       - |
@@ -104,8 +110,8 @@ tasks:
         end
         echo Done'
 
-  terraform_downscale:
-    desc: "Down scale VM"
+  terraform_downsize:
+    desc: "Down size VM"
     dir: terraform
     cmds:
       - |
@@ -200,22 +206,23 @@ tasks:
     cmds:
       - pipx ensurepath
       - pipx install --include-deps ansible
+      - pipx install --include-deps ansible-lint
       - pipx inject --include-apps ansible argcomplete
       - pipx upgrade --include-injected ansible
 
   get_link:
     desc: "Получение ссылки на веб-приложение"
     cmds:
-      - task terraform-output | grep app | cut -f2 -d\" | xargs -I% echo 'http://%:9292'
+      - task terraform-output | grep app | cut -f2 -d\" | xargs -I% echo -e 'http://%:9292\nhttp://%:80\n'
 
   ansible_make:
     desc: "Применение всей конфигурации Ansible"
     dir: ansible
     cmds:
-      - task: terraform_upscale
+      - task: terraform_upsize
       - task: ansible-inventory
       - task: ansible-apply
-      - task: terraform_downscale
+      - task: terraform_downsize
       - task: ansible-inventory
 
   ansible-inventory:
@@ -223,13 +230,13 @@ tasks:
     dir: ansible
     cmds:
       - task terraform-output 2>/dev/null | python3 inventory_dir/hosts111.py
-      - ansible-inventory -i inventory -y --list > inventory.yml
-      - sed -i 's/^inventory =.*/inventory = .\/inventory.yml/'  ansible.cfg
+      - ansible-inventory -i inventory -y --list > environments/$D/inventory.yaml
+      - sed -i "s|^inventory =.*|inventory = ./environments/$D/inventory.yaml|" ansible.cfg
 
   ansible-apply:
     desc: "Применение конфигурации Ansible нужного варианта"
     cmds:
-      - task: ansible-apply3
+      - task: ansible-apply4
 
   ansible-apply1:
     desc: "Применение конфигурации Ansible вариант №1"
@@ -261,4 +268,23 @@ tasks:
     dir: ansible
     cmds:
       - ansible all -m ping
+      # - ansible-playbook site.yml --check
       - ansible-playbook site.yml
+
+  ansible-apply4:
+    desc: "Применение конфигурации Ansible вариант №4"
+    dir: ansible
+    cmds:
+      - ansible-galaxy install -r environments/$D/requirements.yml
+      - ansible-galaxy collection install community.general
+      - |
+        fish -c '
+          set -l F true
+          while $F
+            echo ============================== TRYING $D ==================
+            ansible all -m ping && ansible-playbook playbooks/site.yml
+            if test $status -eq 0
+              set F false
+            end
+          end
+          echo Done'

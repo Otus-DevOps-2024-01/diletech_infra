@@ -9,8 +9,8 @@ all:
     stage:
       hosts:
         appserver-stage:
-          ansible_host: 158.160.35.78
+          ansible_host: 62.84.118.9
           internal_ip: unknown
         dbserver-stage:
-          ansible_host: 158.160.57.174
-          internal_ip: 10.60.172.14
+          ansible_host: 51.250.12.213
+          internal_ip: 10.24.29.9
