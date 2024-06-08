@@ -11,4 +11,4 @@ yc_terraform.tf
 terraform_init.sh
 
 *.retry
-jdauphant.nginx
+#jdauphant.nginx
