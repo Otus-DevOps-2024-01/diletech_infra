@@ -1,0 +1,11 @@
+[prod]
+
+[stage]
+appserver-stage ansible_host=158.160.34.208 internal_ip=unknown
+dbserver-stage ansible_host=158.160.42.26 internal_ip=10.254.195.7
+
+[db]
+dbserver-stage ansible_host=158.160.42.26 internal_ip=10.254.195.7
+
+[app]
+appserver-stage ansible_host=158.160.34.208 internal_ip=unknown
