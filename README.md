@@ -287,7 +287,7 @@ inventory_dir
 ```
 #### pipx
 для совместимости с версией питона на хениал подходит установка ткой версии `pipx install --include-deps ansible==8.7.0`
-#### molecula (not done)
+#### molecule (not done)
 c vagrant не взлетело, очевидно нужно с докером пробовать (и даже эта репа в архив переведна ansible-community/(molecule-vagrant)[https://github.com/ansible-community/molecule-vagrant])
 - `molecule drivers` посмотреть какие есть драйверы
 - `pip3 install molecule-vagrant` отдельно добавляет драйвер (но и может быть конфликтует и всё портит, точной инфы нету :)
