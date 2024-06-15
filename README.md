@@ -277,3 +277,24 @@ inventory_dir
 посмотерть как выглядит теперешний вариант запуска можно так: `task --summary ansible-apply4`
 
 а вызывать так `D=$DD task ansible-apply4` или полный цикл с целями инвентри и ресайзов `D=$DD task ansible_make`
+
+### Ansible-4
+#### vagrant
+добавить файл /etc/vbox/networks.conf с таким содержимым (что бы разрешить назначение IP из этих диапазонов)
+```
+* 10.0.0.0/8 192.168.0.0/16
+* 2001::/64
+```
+#### pipx
+для совместимости с версией питона на хениал подходит установка ткой версии `pipx install --include-deps ansible==8.7.0`
+#### molecula (not done)
+c vagrant не взлетело, очевидно нужно с докером пробовать (и даже эта репа в архив переведна ansible-community/(molecule-vagrant)[https://github.com/ansible-community/molecule-vagrant])
+- `molecule drivers` посмотреть какие есть драйверы
+- `pip3 install molecule-vagrant` отдельно добавляет драйвер (но и может быть конфликтует и всё портит, точной инфы нету :)
+- `molecule init scenario -d vagrant` (в новых версиях другие ключи не применимы) создаются пустые плейбуки с указанием *TODO: Developer must implement and populate 'server' variable*, при этом пример можно взять из репозитория molecule-vagrant, но тасках ансибл падает с ошибкой: "from ansible.module_utils.common.yaml import yaml_load ModuleNotFoundError: No module named ansible.module_utils.common.yaml" (очевидно из-за не совместимости версий всего и вся, потому как очевидно у редхата неистовая мутабельность в продуктах связанных с ансиблом, скорее всего из-за гибкого аджайла или возможно из-за текучки инженеров по году-полтора, а может быть и то и другое :)
+- `molecule test` прогнать всё от дестроя до дестроя или по отдельности: `molecule create` создать инстансы, `molecule converge` применить плейбуки
+- в последних версиях убрали команду lint и всё что с ней связано, тпереь необходимо прогонять yamllint и ansible-lint отдельно в каком-то Makefile и т.п.
+#### galax (not done)
+идеальная роль в отдельном репозитории с подключением с указанием в src ветки/тэга с описанием меты и покрытием тестов
+#### packer (not done)
+после перетасовки файлов запуск пакера делать с тэгами и указанием местоположения ролей

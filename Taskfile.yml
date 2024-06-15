@@ -199,7 +199,7 @@ tasks:
         apt list --upgradable 2>/dev/null | \
         awk -F\/ '$1~/python/ {print $1}' | \
         xargs sudo apt install -y --only-upgrade
-      - pip3 install -r requirements.txt
+      - pip3 install -r requirements.txt  --user --break-system-packages
 
   install_ansible:
     desc: "установить/обновить Ansible"
