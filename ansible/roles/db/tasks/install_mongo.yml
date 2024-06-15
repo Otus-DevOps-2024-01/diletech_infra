@@ -1,0 +1,32 @@
+- name: Add APT key
+  apt_key:
+    id: "{{ item.id }}"
+    keyserver: keyserver.ubuntu.com
+  loop:
+    - { id: "EA312927" }
+    - { id: "160D26BB1785BA38" }
+    - { id: "D68FA50FEA312927" }
+  tags: install
+
+- name: Add APT repository
+  apt_repository:
+    repo: "deb [arch=amd64] http://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/{{ mongodb_version }} multiverse"
+    state: present
+    validate_certs: false
+  vars:
+    mongodb_version: "{{ '3.2' if ansible_distribution_release == 'xenial' else '7.0' }}"
+  when: ansible_distribution == 'Ubuntu'
+  tags: install
+
+- name: Install mongodb package
+  apt:
+    name: mongodb-org
+    state: present
+  tags: install
+
+- name: Configure service supervisor
+  systemd:
+    name: mongod
+    enabled: yes
+    state: started
+  tags: install

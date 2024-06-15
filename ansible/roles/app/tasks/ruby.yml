@@ -1,0 +1,16 @@
+---
+    - name: apt update and install dependencies
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        clean: yes
+        name:
+          - apt-transport-https
+          - git
+          - build-essential
+          - ruby-full
+        state: present
+      tags: ruby
+    - name: Install bundler to the concrete version
+      command: bash -lc "gem install bundler -v 1.16.1"
+      tags: ruby
