@@ -288,7 +288,7 @@ inventory_dir
 #### pipx
 для совместимости с версией питона на хениал подходит установка ткой версии `pipx install --include-deps ansible==8.7.0`
 #### molecule (not done)
-c vagrant не взлетело, очевидно нужно с докером пробовать (и даже эта репа в архив переведна ansible-community/(molecule-vagrant)[https://github.com/ansible-community/molecule-vagrant])
+c vagrant не взлетело, очевидно нужно с докером пробовать (и даже эта репа в архив переведна ansible-community/[molecule-vagrant](https://github.com/ansible-community/molecule-vagrant))
 - `molecule drivers` посмотреть какие есть драйверы
 - `pip3 install molecule-vagrant` отдельно добавляет драйвер (но и может быть конфликтует и всё портит, точной инфы нету :)
 - `molecule init scenario -d vagrant` (в новых версиях другие ключи не применимы) создаются пустые плейбуки с указанием *TODO: Developer must implement and populate 'server' variable*, при этом пример можно взять из репозитория molecule-vagrant, но тасках ансибл падает с ошибкой: "from ansible.module_utils.common.yaml import yaml_load ModuleNotFoundError: No module named ansible.module_utils.common.yaml" (очевидно из-за не совместимости версий всего и вся, потому как очевидно у редхата неистовая мутабельность в продуктах связанных с ансиблом, скорее всего из-за гибкого аджайла или возможно из-за текучки инженеров по году-полтора, а может быть и то и другое :)
